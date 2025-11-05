@@ -1,0 +1,24 @@
+# OpenShift Route
+# For Kubernetes, use Ingress instead
+
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: rhoim-inference
+  labels:
+    app: rhoim
+    component: inference
+  annotations:
+    # Set timeout for long-running requests (streaming)
+    haproxy.router.openshift.io/timeout: "300s"
+spec:
+  to:
+    kind: Service
+    name: rhoim-inference
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

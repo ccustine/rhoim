@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rhoim-inference
+  labels:
+    app: rhoim
+    component: inference
+  annotations:
+    # Service annotations for monitoring
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+    prometheus.io/path: "/metrics"
+spec:
+  selector:
+    app: rhoim
+    component: inference
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600

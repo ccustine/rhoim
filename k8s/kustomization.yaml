@@ -1,0 +1,51 @@
+# Kustomization file for RHOIM deployment
+# Deploy with: kubectl apply -k k8s/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: rhoim
+
+# Namespace to deploy into
+namespace: rhoim
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: rhoim
+  app.kubernetes.io/version: "0.2.0"
+  app.kubernetes.io/component: inference
+  app.kubernetes.io/part-of: rhoim
+
+# Resources to deploy
+resources:
+  - serviceaccount.yaml
+  - configmap.yaml
+  - deployment.yaml
+  - service.yaml
+  - route.yaml  # Remove this for non-OpenShift deployments
+
+# Optional: Uncomment to use PVC instead of emptyDir
+# - pvc.yaml
+
+# Images to use
+images:
+  - name: quay.io/ccustine/rhoim-bootc
+    newTag: v0.2.0
+  - name: quay.io/ccustine/rhoim-model-downloader
+    newTag: v0.2.0
+
+# Configuration patches
+patches:
+  # Example: Use PVC instead of emptyDir
+  # Uncomment this patch and the pvc.yaml resource above
+  # - target:
+  #     kind: Deployment
+  #     name: rhoim-inference
+  #   patch: |-
+  #     - op: replace
+  #       path: /spec/template/spec/volumes/0
+  #       value:
+  #         name: model-storage
+  #         persistentVolumeClaim:
+  #           claimName: rhoim-models

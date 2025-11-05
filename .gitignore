@@ -1,0 +1,137 @@
+# RHOIM .gitignore
+
+# Secrets - NEVER commit these!
+k8s/secret.yaml
+*.token
+.env
+.env.local
+.env.production
+.env.development
+secret.yaml
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*.cer
+*.crt
+*.cert
+*_rsa
+*_dsa
+*_ecdsa
+*_ed25519
+.ssh/
+.kube/config
+kubeconfig
+*.kubeconfig
+*credentials*
+*password*
+auth.json
+.huggingface/
+hf_token*
+.docker/config.json
+
+# Build artifacts
+output/
+*.qcow2
+*.iso
+*.raw
+
+# Container build cache
+.buildah/
+.podman/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Model files (too large for git)
+models/
+*.safetensors
+*.bin
+*.pt
+*.gguf
+
+# Obsidian
+.obsidian/workspace*
+.obsidian/cache
+.trash/
+
+# Container images and tarballs
+*.tar.gz
+*.tar
+*.zip
+bootc-output/
+image-output/
+
+# Test artifacts
+test-output/
+test-results/
+
+# Additional VM/Image formats
+*.img
+*.vmdk
+*.vdi
+*.vhd
+*.ova
+*.ovf
+
+# Additional Python
+*.pth
+*.onnx
+*.h5
+*.pb
+data/
+datasets/
+checkpoints/
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Logs and temp
+*.tmp
+*.temp
+*.bak
+*.backup
+*.cache
+.cache/
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+/obsidian/
+/.obsidian/

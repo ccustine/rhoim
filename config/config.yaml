@@ -1,0 +1,101 @@
+# RHOIM Configuration File
+# Configuration for vLLM inference server
+
+# Model configuration
+model:
+  # Model name as it appears in the API
+  name: "granite-7b-instruct"
+
+  # Path to model files
+  path: "/models"
+
+  # Quantization method: null, "awq", "gptq", or "squeezellm"
+  quantization: null
+
+  # Data type: "auto", "float16", "bfloat16"
+  dtype: "auto"
+
+  # Trust remote code in model config
+  trust_remote_code: false
+
+# Server configuration
+server:
+  # Host to bind to
+  host: "0.0.0.0"
+
+  # Port to listen on
+  port: 8000
+
+  # Number of uvicorn workers (usually 1 for vLLM)
+  workers: 1
+
+  # Enable CORS
+  cors_enabled: true
+
+  # Allowed CORS origins (* for all)
+  cors_origins:
+    - "*"
+
+# GPU configuration
+gpu:
+  # Fraction of GPU memory to use (0.0 - 1.0)
+  memory_utilization: 0.9
+
+  # Number of GPUs to use for tensor parallelism
+  tensor_parallel_size: 1
+
+  # Enable CUDA graph for optimization
+  enforce_eager: false
+
+# Inference configuration
+inference:
+  # Maximum sequence length
+  max_model_len: 4096
+
+  # Maximum number of sequences to process in parallel
+  max_num_seqs: 256
+
+  # Maximum number of batched tokens
+  max_num_batched_tokens: 8192
+
+  # Block size for PagedAttention
+  block_size: 16
+
+  # Swap space in GB (for CPU offloading)
+  swap_space: 4
+
+# Logging configuration
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+
+  # Log format: "text" or "json"
+  format: "json"
+
+  # Disable per-request logging
+  disable_log_requests: false
+
+  # Log file path (null for stdout only)
+  log_file: null
+
+# Metrics configuration
+metrics:
+  # Enable Prometheus metrics
+  enabled: true
+
+  # Metrics port (same as server port by default)
+  port: 8000
+
+  # Metrics path
+  path: "/metrics"
+
+# Advanced configuration
+advanced:
+  # Enable prefix caching
+  enable_prefix_caching: false
+
+  # Enable chunked prefill
+  enable_chunked_prefill: false
+
+  # Maximum number of log probabilities
+  max_logprobs: 5

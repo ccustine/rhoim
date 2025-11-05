@@ -1,0 +1,68 @@
+[Unit]
+Description=RHOIM vLLM Inference Server
+Documentation=https://docs.vllm.ai
+After=network-online.target
+Wants=network-online.target
+# Only start if models directory exists and has content
+ConditionPathExists=/models
+ConditionPathIsDirectory=/models
+
+[Service]
+Type=exec
+User=1001
+Group=0
+
+# Environment configuration
+Environment="CUDA_VISIBLE_DEVICES=0"
+Environment="RHOIM_CONFIG=/etc/rhoim/config.yaml"
+Environment="PYTHONPATH=/usr/local/lib/python3.11/site-packages"
+Environment="LD_LIBRARY_PATH=/usr/local/cuda/lib64"
+
+# Working directory
+WorkingDirectory=/opt/rhoim
+
+# Pre-start validation
+# Verify that model files exist before starting
+ExecStartPre=/usr/bin/bash -c 'ls /models/*.safetensors 2>/dev/null || ls /models/*.bin 2>/dev/null || ls /models/*.pt 2>/dev/null || (echo "ERROR: No model files found in /models"; exit 1)'
+ExecStartPre=/usr/bin/bash -c 'test -f /models/config.json || (echo "ERROR: Model config.json not found"; exit 1)'
+
+# Start vLLM OpenAI-compatible server
+ExecStart=/usr/bin/python3.11 -m vllm.entrypoints.openai.api_server \
+    --model /models \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --served-model-name granite-7b-instruct \
+    --gpu-memory-utilization 0.9 \
+    --max-model-len 4096 \
+    --dtype auto \
+    --disable-log-requests
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=300
+StartLimitBurst=3
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=rhoim-inference
+
+# Security hardening
+# Note: Some of these may need adjustment for GPU access
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/rhoim /models
+ProtectKernelTunables=true
+ProtectControlGroups=true
+
+# Resource limits
+# Adjust based on available resources
+TimeoutStartSec=600
+TimeoutStopSec=60
+MemoryMax=16G
+
+[Install]
+WantedBy=multi-user.target

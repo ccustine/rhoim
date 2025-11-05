@@ -1,0 +1,104 @@
+# RHOIM bootc Image - vLLM Inference Server
+# Base: RHEL 9 bootc
+# Purpose: Bootable container for LLM inference using vLLM
+
+# Stage 1: Builder - Compile and install Python dependencies
+FROM registry.redhat.io/ubi9/python-311:latest AS builder
+
+USER 0
+
+# Install build dependencies
+RUN dnf install -y \
+    gcc \
+    gcc-c++ \
+    python3.11-devel \
+    && dnf clean all
+
+# Create installation prefix
+RUN mkdir -p /opt/vllm
+
+# Install vLLM and dependencies
+# Using specific CUDA version to match runtime
+RUN python3.11 -m pip install --no-cache-dir --prefix=/opt/vllm \
+    vllm==0.8.0 \
+    prometheus-client \
+    pyyaml \
+    huggingface-hub
+
+# Stage 2: bootc Runtime Image
+FROM registry.redhat.io/rhel9/rhel-bootc:latest
+
+# Metadata
+LABEL name="rhoim-inference" \
+      version="0.2.0" \
+      summary="RHOIM vLLM Inference Server on RHEL 9 bootc" \
+      description="Bootable container image for serving LLM inference using vLLM with OpenAI-compatible API" \
+      io.k8s.display-name="RHOIM Inference" \
+      io.k8s.description="Red Hat OpenShift Inference Microservices - vLLM Server" \
+      io.openshift.tags="ai,llm,inference,vllm,rhel9,bootc" \
+      maintainer="Red Hat"
+
+# Install system dependencies and NVIDIA CUDA runtime
+# Note: This requires NVIDIA CUDA repository configuration
+COPY cuda-rhel9.repo /etc/yum.repos.d/
+
+RUN dnf install -y \
+    python3.11 \
+    python3.11-pip \
+    cuda-runtime-12-8 \
+    cuda-cudart-12-8 \
+    libcublas-12-8 \
+    libcudnn8 \
+    wget \
+    curl \
+    && dnf clean all
+
+# Copy Python packages from builder stage
+COPY --from=builder /opt/vllm /usr/local
+
+# Set Python path to include installed packages
+ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages:$PYTHONPATH
+ENV PATH=/usr/local/bin:$PATH
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+
+# Create application directory structure
+RUN mkdir -p \
+    /opt/rhoim/config \
+    /opt/rhoim/scripts \
+    /models \
+    /var/log/rhoim \
+    /etc/rhoim
+
+# Copy application files
+COPY config/config.yaml /etc/rhoim/config.yaml
+COPY scripts/start-inference.sh /opt/rhoim/scripts/start-inference.sh
+COPY scripts/download-model.sh /opt/rhoim/scripts/download-model.sh
+COPY systemd/rhoim-inference.service /usr/lib/systemd/system/rhoim-inference.service
+
+# Make scripts executable
+RUN chmod +x /opt/rhoim/scripts/*.sh
+
+# Enable systemd service
+RUN systemctl enable rhoim-inference.service
+
+# Configure firewall to allow port 8000
+RUN firewall-offline-cmd --add-port=8000/tcp
+
+# Configure SELinux to allow binding to port 8000
+# Note: This may require additional policy modules in production
+RUN semanage port -a -t http_port_t -p tcp 8000 || \
+    semanage port -m -t http_port_t -p tcp 8000 || true
+
+# Create placeholder in /models to ensure directory exists
+RUN touch /models/.placeholder
+
+# Set proper permissions
+RUN chown -R 1001:0 /opt/rhoim /models /var/log/rhoim /etc/rhoim && \
+    chmod -R g=u /opt/rhoim /models /var/log/rhoim /etc/rhoim
+
+# Expose HTTP port for vLLM API
+EXPOSE 8000
+
+# For container mode: use systemd init
+# For bootc mode: this becomes the system init
+CMD ["/sbin/init"]

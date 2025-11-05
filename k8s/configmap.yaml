@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rhoim-config
+  labels:
+    app: rhoim
+data:
+  config.yaml: |
+    # RHOIM Configuration File
+    # Configuration for vLLM inference server
+
+    # Model configuration
+    model:
+      name: "granite-7b-instruct"
+      path: "/models"
+      quantization: null
+      dtype: "auto"
+      trust_remote_code: false
+
+    # Server configuration
+    server:
+      host: "0.0.0.0"
+      port: 8000
+      workers: 1
+      cors_enabled: true
+      cors_origins:
+        - "*"
+
+    # GPU configuration
+    gpu:
+      memory_utilization: 0.9
+      tensor_parallel_size: 1
+      enforce_eager: false
+
+    # Inference configuration
+    inference:
+      max_model_len: 4096
+      max_num_seqs: 256
+      max_num_batched_tokens: 8192
+      block_size: 16
+      swap_space: 4
+
+    # Logging configuration
+    logging:
+      level: "INFO"
+      format: "json"
+      disable_log_requests: false
+      log_file: null
+
+    # Metrics configuration
+    metrics:
+      enabled: true
+      port: 8000
+      path: "/metrics"
+
+    # Advanced configuration
+    advanced:
+      enable_prefix_caching: false
+      enable_chunked_prefill: false
+      max_logprobs: 5

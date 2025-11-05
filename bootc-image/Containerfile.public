@@ -1,0 +1,90 @@
+# RHOIM bootc Image - vLLM Inference Server (Public Base)
+# Base: RHEL 9 UBI (publicly accessible)
+# Purpose: Bootable container for LLM inference using vLLM
+
+# Stage 1: Builder - Compile and install Python dependencies
+FROM docker.io/redhat/ubi9:latest AS builder
+
+USER 0
+
+# Install Python 3.11 and build dependencies
+RUN dnf install -y \
+    python3.11 \
+    python3.11-pip \
+    python3.11-devel \
+    gcc \
+    gcc-c++ \
+    && dnf clean all
+
+# Create installation prefix
+RUN mkdir -p /opt/vllm
+
+# Install vLLM and dependencies
+# Note: On macOS build, CUDA libraries won't be functional but image will build
+RUN python3.11 -m pip install --no-cache-dir --prefix=/opt/vllm \
+    vllm==0.8.0 \
+    prometheus-client \
+    pyyaml \
+    huggingface-hub
+
+# Stage 2: Runtime Image
+# Note: Using UBI9 instead of rhel-bootc for public availability
+# In production, use registry.redhat.io/rhel9/rhel-bootc
+FROM docker.io/redhat/ubi9:latest
+
+# Metadata
+LABEL name="rhoim-inference" \
+      version="0.2.0" \
+      summary="RHOIM vLLM Inference Server (Public Build)" \
+      description="Container image for serving LLM inference using vLLM with OpenAI-compatible API" \
+      io.k8s.display-name="RHOIM Inference" \
+      io.k8s.description="Red Hat OpenShift Inference Microservices - vLLM Server" \
+      io.openshift.tags="ai,llm,inference,vllm,rhel9" \
+      maintainer="Red Hat"
+
+# Install Python 3.11 runtime
+RUN dnf install -y --allowerasing \
+    python3.11 \
+    python3.11-pip \
+    wget \
+    curl \
+    && dnf clean all
+
+# Copy Python packages from builder stage
+COPY --from=builder /opt/vllm /usr/local
+
+# Set Python path to include installed packages
+ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages:$PYTHONPATH
+ENV PATH=/usr/local/bin:$PATH
+
+# Create application directory structure
+RUN mkdir -p \
+    /opt/rhoim/config \
+    /opt/rhoim/scripts \
+    /models \
+    /var/log/rhoim \
+    /etc/rhoim
+
+# Note: Application files would be copied here in production
+# For test build, we'll create placeholders
+RUN echo "# Placeholder config" > /etc/rhoim/config.yaml
+RUN echo '#!/bin/bash\necho "Start script placeholder"' > /opt/rhoim/scripts/start-inference.sh
+
+# Make scripts executable
+RUN chmod +x /opt/rhoim/scripts/start-inference.sh
+
+# Create placeholder in /models to ensure directory exists
+RUN touch /models/.placeholder
+
+# Set proper permissions
+RUN chown -R 1001:0 /opt/rhoim /models /var/log/rhoim /etc/rhoim && \
+    chmod -R g=u /opt/rhoim /models /var/log/rhoim /etc/rhoim
+
+# Expose HTTP port for vLLM API
+EXPOSE 8000
+
+# Default user
+USER 1001
+
+# Entry point
+CMD ["/bin/bash"]

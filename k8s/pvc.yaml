@@ -1,0 +1,20 @@
+# PersistentVolumeClaim for model storage
+# Use this instead of emptyDir for production deployments
+# Allows model to persist across pod restarts
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rhoim-models
+  labels:
+    app: rhoim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  # Specify storage class for performance
+  # Adjust based on your cluster's available storage classes
+  storageClassName: fast-ssd
+  volumeMode: Filesystem

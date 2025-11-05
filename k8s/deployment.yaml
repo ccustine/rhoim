@@ -1,0 +1,146 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rhoim-inference
+  labels:
+    app: rhoim
+    component: inference
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rhoim
+      component: inference
+  template:
+    metadata:
+      labels:
+        app: rhoim
+        component: inference
+      annotations:
+        # Prometheus scraping
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Init container to download model
+      initContainers:
+      - name: model-downloader
+        image: quay.io/ccustine/rhoim-model-downloader:v0.2.0
+        imagePullPolicy: Always
+        env:
+        - name: MODEL_NAME
+          value: "ibm-granite/granite-7b-instruct"
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: huggingface-token
+              key: token
+              optional: true
+        - name: MODEL_REVISION
+          value: "main"
+        - name: OUTPUT_DIR
+          value: "/models"
+        - name: SKIP_IF_EXISTS
+          value: "true"
+        volumeMounts:
+        - name: model-storage
+          mountPath: /models
+        resources:
+          limits:
+            memory: "8Gi"
+          requests:
+            memory: "4Gi"
+            cpu: "1"
+
+      # Main inference container
+      containers:
+      - name: inference
+        image: quay.io/ccustine/rhoim-bootc:v0.2.0
+        imagePullPolicy: Always
+        command: ["/opt/rhoim/scripts/start-inference.sh"]
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        env:
+        - name: MODEL_PATH
+          value: "/models"
+        - name: MODEL_NAME
+          value: "granite-7b-instruct"
+        - name: PORT
+          value: "8000"
+        - name: GPU_MEMORY
+          value: "0.9"
+        - name: MAX_MODEL_LEN
+          value: "4096"
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+        volumeMounts:
+        - name: model-storage
+          mountPath: /models
+          readOnly: true
+        - name: config
+          mountPath: /etc/rhoim
+          readOnly: true
+        resources:
+          limits:
+            nvidia.com/gpu: "1"
+            memory: "16Gi"
+            cpu: "4"
+          requests:
+            nvidia.com/gpu: "1"
+            memory: "8Gi"
+            cpu: "2"
+        # Liveness probe - check if server is alive
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 300
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        # Readiness probe - check if model is loaded
+        readinessProbe:
+          httpGet:
+            path: /v1/models
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 5
+        # Security context
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+
+      # Volumes
+      volumes:
+      - name: model-storage
+        emptyDir:
+          sizeLimit: "20Gi"
+      - name: config
+        configMap:
+          name: rhoim-config
+
+      # Node selector for GPU nodes
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+
+      # Tolerations for GPU nodes
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+
+      # Service account
+      serviceAccountName: rhoim
+
+      # Restart policy
+      restartPolicy: Always

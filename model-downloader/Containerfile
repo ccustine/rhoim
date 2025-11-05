@@ -1,0 +1,36 @@
+# RHOIM Model Downloader - Init Container
+# Purpose: Download LLM models from HuggingFace Hub to shared volume
+
+FROM registry.redhat.io/ubi9/python-311:latest
+
+# Metadata
+LABEL name="rhoim-model-downloader" \
+      version="0.2.0" \
+      summary="RHOIM Model Downloader Init Container" \
+      description="Downloads LLM models from HuggingFace Hub for RHOIM inference server" \
+      io.k8s.display-name="RHOIM Model Downloader" \
+      io.openshift.tags="ai,llm,model,downloader"
+
+USER 0
+
+# Install HuggingFace Hub CLI and dependencies
+RUN pip install --no-cache-dir \
+    huggingface-hub[cli]==0.20.3 \
+    requests \
+    tqdm
+
+# Copy download script
+COPY download-model.py /usr/local/bin/download-model.py
+RUN chmod +x /usr/local/bin/download-model.py
+
+# Create models directory
+RUN mkdir -p /models && chown -R 1001:0 /models
+
+# Run as non-root
+USER 1001
+
+# Set working directory
+WORKDIR /models
+
+# Entry point is the download script
+ENTRYPOINT ["/usr/local/bin/download-model.py"]
