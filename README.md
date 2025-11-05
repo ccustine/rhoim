@@ -1,5 +1,8 @@
 # RHOIM - Red Hat OpenShift Inference Microservices
 
+> **⚠️ EXPERIMENTAL PROJECT**
+> This is an experimental project and is not officially supported by Red Hat. Use at your own risk. This project is intended for testing, development, and evaluation purposes only.
+
 Bootable container (bootc) images for serving LLM inference using vLLM with OpenAI-compatible API.
 
 ## Quick Start
